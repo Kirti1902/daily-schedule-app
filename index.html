@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+   <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -95,6 +96,9 @@
         body.dark .bg-yellow-500 {
             background-color: #eab308;
         }
+        .line-through {
+            text-decoration: line-through;
+        }
     </style>
 </head>
 <body class="flex flex-col items-center justify-center min-h-screen p-4">
@@ -106,7 +110,7 @@
                 Welcome!
             </h2>
             <p class="text-gray-600 text-lg animate-fade-in" style="animation-delay: 0.5s;">
-                This simple app helps you track your daily schedule and stay focused with a Pomodoro timer.
+                This simple app helps you track your daily schedule and stay on top of your tasks.
             </p>
             <ul class="text-left text-gray-500 space-y-3 max-w-sm mx-auto">
                 <li class="flex items-center space-x-3 animate-slide-up" style="animation-delay: 0.7s;">
@@ -114,10 +118,6 @@
                     <span>Track and manage daily activities</span>
                 </li>
                 <li class="flex items-center space-x-3 animate-slide-up" style="animation-delay: 0.9s;">
-                    <i class="fas fa-clock text-blue-500"></i>
-                    <span>Use a customizable Pomodoro timer</span>
-                </li>
-                <li class="flex items-center space-x-3 animate-slide-up" style="animation-delay: 1.1s;">
                     <i class="fas fa-chart-line text-blue-500"></i>
                     <span>Visualize your progress with charts</span>
                 </li>
@@ -131,7 +131,7 @@
     <!-- Main Application Container -->
     <div id="main-app" class="container bg-white rounded-3xl shadow-xl p-6 md:p-8 space-y-6 hidden">
         <div class="flex justify-between items-center mb-4">
-            <h1 class="text-3xl sm:text-4xl font-bold text-center flex-1">Daily Schedule Tracker</h1>
+            <h1 class="text-3xl sm:text-4xl font-bold text-center flex-1">Daily To-Do List</h1>
             <button id="theme-toggle" class="p-3 rounded-full text-gray-600 hover:text-blue-500 transition-colors">
                 <i class="fas fa-moon text-xl"></i>
             </button>
@@ -142,7 +142,7 @@
             <h2 class="text-2xl font-semibold mb-4">Activities</h2>
             <div class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 mb-4">
                 <input type="text" id="activity-name" placeholder="Activity Name" class="w-full flex-1 p-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <input type="number" id="activity-hours" placeholder="Scheduled Hours" class="w-full sm:w-32 p-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <input type="number" id="scheduled-minutes" placeholder="Minutes" class="w-full sm:w-28 p-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <input type="date" id="activity-date" class="w-full sm:w-40 p-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <button id="add-activity-btn" class="w-full sm:w-auto bg-blue-500 hover:bg-blue-600 text-white font-bold p-3 rounded-xl transition-colors">
                     Add
@@ -150,32 +150,6 @@
             </div>
             <div id="validation-message" class="text-red-500 text-sm mt-2 hidden"></div>
             <ul id="activity-list" class="space-y-3"></ul>
-        </section>
-
-        <!-- Pomodoro Timer Section -->
-        <section class="bg-gray-50 p-6 rounded-2xl shadow-inner border border-gray-200">
-            <h2 class="text-2xl font-semibold mb-4">Pomodoro Timer</h2>
-            <div class="space-y-4">
-                <div class="flex justify-center items-center space-x-4">
-                    <input type="number" id="work-duration" class="w-24 p-2 text-center rounded-lg border border-gray-300" value="25">
-                    <span class="text-sm text-gray-600">Work (min)</span>
-                    <input type="number" id="break-duration" class="w-24 p-2 text-center rounded-lg border border-gray-300" value="5">
-                    <span class="text-sm text-gray-600">Break (min)</span>
-                </div>
-                <div class="text-2xl font-bold text-center text-gray-600" id="timer-activity-name"></div>
-                <div class="text-5xl font-extrabold text-center text-blue-600 my-4" id="timer-display">25:00</div>
-                <div class="flex justify-center space-x-4">
-                    <button id="start-timer-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-xl transition-colors">
-                        Start
-                    </button>
-                    <button id="pause-timer-btn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-6 rounded-xl transition-colors hidden">
-                        Pause
-                    </button>
-                    <button id="reset-timer-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-xl transition-colors">
-                        Reset
-                    </button>
-                </div>
-            </div>
         </section>
 
         <!-- Charts Section -->
@@ -217,13 +191,13 @@
                     localStorage.setItem('theme', 'light');
                     themeIcon.classList.replace('fa-sun', 'fa-moon');
                 }
+                renderChart(currentView); // Re-render chart to update colors
             });
             
             const getStartedBtn = document.getElementById('get-started-btn');
             const welcomeModal = document.getElementById('welcome-modal');
             const mainApp = document.getElementById('main-app');
 
-            // Check if the user has visited before
             const hasVisited = localStorage.getItem('hasVisited');
             if (hasVisited) {
                 welcomeModal.style.display = 'none';
@@ -241,14 +215,13 @@
 
             // Activity Tracker Logic
             const activityNameInput = document.getElementById('activity-name');
-            const activityHoursInput = document.getElementById('activity-hours');
+            const scheduledMinutesInput = document.getElementById('scheduled-minutes');
             const activityDateInput = document.getElementById('activity-date');
             const addActivityBtn = document.getElementById('add-activity-btn');
             const activityList = document.getElementById('activity-list');
             const validationMessage = document.getElementById('validation-message');
             let activities = JSON.parse(localStorage.getItem('activities')) || [];
 
-            // Set the minimum date for the date picker to today
             const today = new Date().toISOString().split('T')[0];
             activityDateInput.min = today;
 
@@ -258,188 +231,93 @@
 
             function renderActivities() {
                 activityList.innerHTML = '';
-                activities.forEach((activity, index) => {
+                const today = new Date().toISOString().split('T')[0];
+                const todayActivities = activities.filter(a => a.date === today);
+
+                if (todayActivities.length === 0) {
+                    activityList.innerHTML = `<p class="text-center text-gray-500 dark:text-gray-400">No activities scheduled for today.</p>`;
+                    return;
+                }
+
+                todayActivities.forEach((activity, index) => {
                     const li = document.createElement('li');
-                    li.classList.add('flex', 'flex-col', 'sm:flex-row', 'items-start', 'sm:items-center', 'justify-between', 'bg-white', 'p-4', 'rounded-xl', 'shadow-sm', 'border', 'border-gray-200');
+                    li.classList.add('flex', 'flex-col', 'sm:flex-row', 'items-start', 'sm:items-center', 'justify-between', 'bg-white', 'p-4', 'rounded-xl', 'shadow-sm', 'border', 'border-gray-200', 'dark:bg-gray-700', 'dark:border-gray-600');
+                    
+                    const taskClass = activity.isCompleted ? 'line-through text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-gray-100';
+                    const icon = activity.isCompleted ? '<i class="fas fa-check-circle text-green-500 mr-2"></i>' : '';
+                    
+                    const buttonText = activity.isCompleted ? 'Incomplete' : 'Complete';
+                    const buttonClass = activity.isCompleted ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-green-500 hover:bg-green-600';
+
                     li.innerHTML = `
-                        <div class="flex-1 flex flex-col sm:flex-row items-baseline sm:space-x-4 mb-2 sm:mb-0">
-                            <span class="text-lg font-medium text-gray-900 truncate w-full sm:w-1/3">${activity.name}</span>
-                            <span class="text-sm text-gray-500"><i class="fas fa-calendar-alt mr-1"></i> ${activity.date}</span>
-                            <div class="flex items-center space-x-2 text-gray-600">
-                                <span class="text-sm sm:text-base">${activity.completedHours}h / ${activity.scheduledHours}h</span>
-                                <span class="bg-blue-100 text-blue-600 text-xs font-semibold px-2 py-1 rounded-full">${((activity.completedHours / activity.scheduledHours) * 100).toFixed(0)}%</span>
-                            </div>
+                        <div class="flex-1 flex items-center space-x-2">
+                            ${icon}
+                            <span class="text-lg font-medium ${taskClass}">${activity.name}</span>
+                            <span class="text-sm text-gray-500 dark:text-gray-400"><i class="fas fa-clock mr-1"></i> ${activity.scheduledMinutes} min</span>
                         </div>
                         <div class="flex space-x-2 mt-2 sm:mt-0">
-                            <button data-index="${index}" class="start-activity-timer-btn bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition-colors text-sm">Start</button>
-                            <button data-index="${index}" class="update-btn bg-yellow-400 hover:bg-yellow-500 text-white font-bold py-2 px-4 rounded-lg transition-colors text-sm">Update</button>
+                            <button data-index="${index}" class="update-btn ${buttonClass} text-white font-bold py-2 px-4 rounded-lg transition-colors text-sm">${buttonText}</button>
                             <button data-index="${index}" class="delete-btn bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition-colors text-sm">Delete</button>
                         </div>
                     `;
+                    
                     activityList.appendChild(li);
                 });
             }
 
             addActivityBtn.addEventListener('click', () => {
                 const name = activityNameInput.value.trim();
-                const hours = parseInt(activityHoursInput.value, 10);
+                const minutes = scheduledMinutesInput.value;
                 const date = activityDateInput.value;
 
-                // Normalize today's date and the selected date to avoid time-zone issues
                 const todayNormalized = new Date();
                 todayNormalized.setHours(0, 0, 0, 0);
                 const selectedDate = new Date(date);
                 selectedDate.setHours(0, 0, 0, 0);
 
-                if (!name || isNaN(hours) || hours <= 0 || !date) {
-                    validationMessage.textContent = 'Please fill out all fields correctly.';
+                if (!name || !minutes || !date) {
+                    validationMessage.textContent = 'Please fill out all fields.';
                     validationMessage.classList.remove('hidden');
                     return;
                 }
-
+                
                 if (selectedDate < todayNormalized) {
                     validationMessage.textContent = 'Cannot add a task for a past date.';
                     validationMessage.classList.remove('hidden');
                     return;
                 }
-
-                validationMessage.classList.add('hidden'); // Clear previous errors
+                
+                validationMessage.classList.add('hidden');
 
                 activities.push({
                     name: name,
-                    scheduledHours: hours,
-                    completedHours: 0,
-                    date: date
+                    scheduledMinutes: minutes,
+                    date: date,
+                    isCompleted: false
                 });
                 saveActivities();
                 renderActivities();
                 renderChart(currentView);
                 activityNameInput.value = '';
-                activityHoursInput.value = '';
+                scheduledMinutesInput.value = '';
                 activityDateInput.value = '';
             });
 
             activityList.addEventListener('click', (e) => {
-                if (e.target.classList.contains('delete-btn')) {
-                    const index = e.target.dataset.index;
+                const button = e.target.closest('button');
+                if (!button) return;
+                const index = button.dataset.index;
+
+                if (button.classList.contains('delete-btn')) {
                     activities.splice(index, 1);
                     saveActivities();
                     renderActivities();
                     renderChart(currentView);
-                }
-                if (e.target.classList.contains('start-activity-timer-btn')) {
-                    const index = e.target.dataset.index;
-                    startTimer(index);
-                }
-            });
-
-            // Pomodoro Timer Logic
-            const timerDisplay = document.getElementById('timer-display');
-            const timerActivityName = document.getElementById('timer-activity-name');
-            const startBtn = document.getElementById('start-timer-btn');
-            const pauseBtn = document.getElementById('pause-timer-btn');
-            const resetBtn = document.getElementById('reset-timer-btn');
-            const workDurationInput = document.getElementById('work-duration');
-            const breakDurationInput = document.getElementById('break-duration');
-
-            let timer;
-            let isPaused = true;
-            let isWorkSession = true;
-            let workDuration = 25 * 60;
-            let breakDuration = 5 * 60;
-            let timeLeft = workDuration;
-            let activeActivityIndex = null;
-
-            function updateDisplay() {
-                const minutes = Math.floor(timeLeft / 60).toString().padStart(2, '0');
-                const seconds = (timeLeft % 60).toString().padStart(2, '0');
-                timerDisplay.textContent = `${minutes}:${seconds}`;
-            }
-
-            function startTimer(activityIndex = null) {
-                if (!isPaused) return;
-
-                if (activityIndex !== null) {
-                    activeActivityIndex = activityIndex;
-                    // Update timer display with the activity name
-                    timerActivityName.textContent = `Working on: ${activities[activeActivityIndex].name}`;
-                    // Disable all start buttons except the current one
-                    document.querySelectorAll('.start-activity-timer-btn').forEach(btn => btn.disabled = true);
-                } else {
-                    // Disable the global start button
-                    startBtn.disabled = true;
-                }
-
-                isPaused = false;
-                startBtn.classList.add('hidden');
-                pauseBtn.classList.remove('hidden');
-
-                timer = setInterval(() => {
-                    if (timeLeft > 0) {
-                        timeLeft--;
-                        updateDisplay();
-                    } else {
-                        clearInterval(timer);
-                        
-                        // If an activity was being timed, update its hours
-                        if (activeActivityIndex !== null) {
-                            activities[activeActivityIndex].completedHours = (activities[activeActivityIndex].completedHours || 0) + (workDuration / 3600); // Add completed time
-                            saveActivities();
-                            renderActivities();
-                            renderChart(currentView);
-                            activeActivityIndex = null;
-                            timerActivityName.textContent = '';
-                        }
-
-                        isWorkSession = !isWorkSession;
-                        timeLeft = isWorkSession ? workDuration : breakDuration;
-                        updateDisplay();
-                        isPaused = true;
-                        
-                        startBtn.classList.remove('hidden');
-                        pauseBtn.classList.add('hidden');
-                        startBtn.disabled = false;
-                        document.querySelectorAll('.start-activity-timer-btn').forEach(btn => btn.disabled = false);
-                    }
-                }, 1000);
-            }
-
-            function pauseTimer() {
-                isPaused = true;
-                clearInterval(timer);
-                startBtn.classList.remove('hidden');
-                pauseBtn.classList.add('hidden');
-            }
-
-            function resetTimer() {
-                pauseTimer();
-                isWorkSession = true;
-                timeLeft = workDuration;
-                updateDisplay();
-                startBtn.classList.remove('hidden');
-                pauseBtn.classList.add('hidden');
-                startBtn.disabled = false;
-                document.querySelectorAll('.start-activity-timer-btn').forEach(btn => btn.disabled = false);
-                timerActivityName.textContent = '';
-            }
-            
-            startBtn.addEventListener('click', () => startTimer());
-            pauseBtn.addEventListener('click', pauseTimer);
-            resetBtn.addEventListener('click', resetTimer);
-
-            workDurationInput.addEventListener('change', () => {
-                workDuration = parseInt(workDurationInput.value, 10) * 60;
-                if (isWorkSession) {
-                    timeLeft = workDuration;
-                    updateDisplay();
-                }
-            });
-
-            breakDurationInput.addEventListener('change', () => {
-                breakDuration = parseInt(breakDurationInput.value, 10) * 60;
-                if (!isWorkSession) {
-                    timeLeft = breakDuration;
-                    updateDisplay();
+                } else if (button.classList.contains('update-btn')) {
+                    activities[index].isCompleted = !activities[index].isCompleted;
+                    saveActivities();
+                    renderActivities();
+                    renderChart(currentView);
                 }
             });
 
@@ -454,41 +332,39 @@
                 const now = new Date();
                 const currentMonth = now.getMonth();
                 const currentYear = now.getFullYear();
-                let labels, scheduledData, completedData;
+                let labels, totalTasksData, completedTasksData;
 
                 if (view === 'monthly') {
                     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
                     labels = Array.from({ length: daysInMonth }, (_, i) => i + 1);
-                    scheduledData = labels.map(day => {
+                    totalTasksData = labels.map(day => {
                         const dateString = `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-                        return activities.filter(a => a.date === dateString)
-                                        .reduce((sum, a) => sum + a.scheduledHours, 0);
+                        return activities.filter(a => a.date === dateString).length;
                     });
-                    completedData = labels.map(day => {
+                    completedTasksData = labels.map(day => {
                         const dateString = `${currentYear}-${(currentMonth + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-                        return activities.filter(a => a.date === dateString)
-                                        .reduce((sum, a) => sum + a.completedHours, 0);
+                        return activities.filter(a => a.date === dateString && a.isCompleted).length;
                     });
                 } else if (view === 'yearly') {
                     labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                    scheduledData = labels.map((_, monthIndex) => {
+                    totalTasksData = labels.map((_, monthIndex) => {
                         return activities.filter(a => {
                             const date = new Date(a.date);
                             return date.getMonth() === monthIndex && date.getFullYear() === currentYear;
-                        }).reduce((sum, a) => sum + a.scheduledHours, 0);
+                        }).length;
                     });
-                    completedData = labels.map((_, monthIndex) => {
+                    completedTasksData = labels.map((_, monthIndex) => {
                         return activities.filter(a => {
                             const date = new Date(a.date);
-                            return date.getMonth() === monthIndex && date.getFullYear() === currentYear;
-                        }).reduce((sum, a) => sum + a.completedHours, 0);
+                            return date.getMonth() === monthIndex && date.getFullYear() === currentYear && a.isCompleted;
+                        }).length;
                     });
                 }
-                return { labels, scheduledData, completedData };
+                return { labels, totalTasksData, completedTasksData };
             }
 
             function renderChart(view) {
-                const { labels, scheduledData, completedData } = getChartData(view);
+                const { labels, totalTasksData, completedTasksData } = getChartData(view);
 
                 if (progressChart) {
                     progressChart.destroy();
@@ -500,16 +376,16 @@
                         labels: labels,
                         datasets: [
                             {
-                                label: 'Scheduled Hours',
-                                data: scheduledData,
+                                label: 'Total Tasks',
+                                data: totalTasksData,
                                 backgroundColor: 'rgba(59, 130, 246, 0.7)',
                                 borderColor: 'rgba(59, 130, 246, 1)',
                                 borderWidth: 1,
                                 borderRadius: 10,
                             },
                             {
-                                label: 'Completed Hours',
-                                data: completedData,
+                                label: 'Completed Tasks',
+                                data: completedTasksData,
                                 backgroundColor: 'rgba(16, 185, 129, 0.7)',
                                 borderColor: 'rgba(16, 185, 129, 1)',
                                 borderWidth: 1,
@@ -541,7 +417,7 @@
                                 beginAtZero: true,
                                 title: {
                                     display: true,
-                                    text: 'Hours'
+                                    text: 'Number of Tasks'
                                 }
                             }
                         }
@@ -567,10 +443,10 @@
                 renderChart(currentView);
             });
 
-            // Initial render
             renderActivities();
             renderChart(currentView);
         });
     </script>
 </body>
 </html>
+                     
