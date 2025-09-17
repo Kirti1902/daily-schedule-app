@@ -102,13 +102,6 @@
     </style>
 </head>
 <body class="flex flex-col items-center justify-center min-h-screen p-4">
-    <div id="loading-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-75 z-50 flex items-center justify-center transition-opacity duration-300">
-        <div class="flex flex-col items-center space-y-4">
-            <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent border-solid rounded-full animate-spin"></div>
-            <p class="text-white text-lg font-medium">Connecting to cloud...</p>
-        </div>
-    </div>
-
     <!-- Welcome Modal -->
     <div id="welcome-modal" class="fixed inset-0 welcome-bg flex items-center justify-center p-4 z-40 transition-opacity duration-500">
         <div class="welcome-card max-w-lg w-full text-center space-y-6 rounded-2xl p-8 shadow-2xl">
@@ -143,10 +136,6 @@
             </button>
         </div>
 
-        <div class="text-center text-sm text-gray-500 dark:text-gray-400 mb-4">
-            <p>Your User ID: <span id="user-id" class="font-mono text-gray-700 dark:text-gray-200"></span></p>
-        </div>
-
         <!-- Activity Section -->
         <section class="bg-gray-50 p-6 rounded-2xl shadow-inner border border-gray-200">
             <h2 class="text-2xl font-semibold mb-4">Activities</h2>
@@ -161,7 +150,6 @@
             </div>
             <div id="validation-message" class="text-red-500 text-sm mt-2 hidden"></div>
             <ul id="activity-list" class="space-y-3"></ul>
-            <div id="error-message" class="text-red-500 text-center font-bold text-lg mt-4 hidden"></div>
         </section>
 
         <!-- Charts Section -->
@@ -182,27 +170,11 @@
     </div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, addDoc, setDoc, deleteDoc, onSnapshot, collection, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Global variables for Firebase
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const auth = getAuth(app);
-        
-        let userId = null;
         let activities = [];
         let progressChart;
         let currentView = 'monthly';
-        let collectionPath = null; // Path will be set after auth
 
         // UI elements
-        const loadingOverlay = document.getElementById('loading-overlay');
         const activityList = document.getElementById('activity-list');
         const activityNameInput = document.getElementById('activity-name');
         const scheduledHoursInput = document.getElementById('scheduled-hours');
@@ -210,11 +182,9 @@
         const activityDateInput = document.getElementById('activity-date');
         const addActivityBtn = document.getElementById('add-activity-btn');
         const validationMessage = document.getElementById('validation-message');
-        const errorMessage = document.getElementById('error-message');
         const progressChartCanvas = document.getElementById('progress-chart');
         const monthlyViewBtn = document.getElementById('monthly-view-btn');
         const yearlyViewBtn = document.getElementById('yearly-view-btn');
-        const userIdSpan = document.getElementById('user-id');
         
         // Welcome modal logic
         const getStartedBtn = document.getElementById('get-started-btn');
@@ -259,57 +229,21 @@
             renderChart(currentView);
         });
 
-        // Function to hide the loading overlay
-        const hideLoadingOverlay = () => {
-            loadingOverlay.style.opacity = '0';
-            setTimeout(() => loadingOverlay.style.display = 'none', 300);
-        };
+        // --- Data Persistence with localStorage ---
+        function saveActivities() {
+            localStorage.setItem('activities', JSON.stringify(activities));
+        }
 
-        // Initialize Firebase Auth
-        const initAuth = async () => {
-            try {
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            } catch (error) {
-                console.error("Firebase Auth Error:", error);
-                errorMessage.textContent = "Authentication failed. Please try again later or check your network connection.";
-                errorMessage.classList.remove('hidden');
-                hideLoadingOverlay();
+        function loadActivities() {
+            const storedActivities = localStorage.getItem('activities');
+            if (storedActivities) {
+                activities = JSON.parse(storedActivities);
             }
-        };
-
-        // Main authentication state listener
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                userId = user.uid;
-                userIdSpan.textContent = userId;
-                
-                // Set the user-specific collection path
-                collectionPath = `artifacts/${appId}/users/${userId}/activities`;
-
-                // Set up the real-time listener
-                const q = query(collection(db, collectionPath));
-                onSnapshot(q, (snapshot) => {
-                    // This block runs when data is successfully loaded or changes
-                    activities = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    renderActivities();
-                    renderChart(currentView);
-                    hideLoadingOverlay();
-                }, (error) => {
-                    // This block runs if the listener fails
-                    console.error("Error fetching activities:", error);
-                    errorMessage.textContent = "Failed to load data. Please check your network connection.";
-                    errorMessage.classList.remove('hidden');
-                    hideLoadingOverlay();
-                });
-            } else {
-                // If no user is signed in, trigger anonymous authentication
-                initAuth();
-            }
-        });
+        }
+        
+        function generateId() {
+            return Math.random().toString(36).substr(2, 9);
+        }
 
         function formatDuration(totalMinutes) {
             const hours = Math.floor(totalMinutes / 60);
@@ -361,7 +295,7 @@
             });
         }
 
-        addActivityBtn.addEventListener('click', async () => {
+        addActivityBtn.addEventListener('click', () => {
             const name = activityNameInput.value.trim();
             const hours = parseInt(scheduledHoursInput.value) || 0;
             const minutes = parseInt(scheduledMinutesInput.value) || 0;
@@ -376,57 +310,40 @@
             validationMessage.classList.add('hidden');
             
             const totalMinutes = (hours * 60) + minutes;
+            const newActivity = {
+                id: generateId(),
+                name: name,
+                totalMinutes: totalMinutes,
+                date: date,
+                isCompleted: false
+            };
+            activities.push(newActivity);
+            saveActivities();
+            renderActivities();
+            renderChart(currentView);
 
-            try {
-                if (!userId) { throw new Error("User not authenticated."); }
-                await addDoc(collection(db, collectionPath), {
-                    name: name,
-                    totalMinutes: totalMinutes,
-                    date: date,
-                    isCompleted: false,
-                    userId: userId,
-                    createdAt: new Date()
-                });
-                activityNameInput.value = '';
-                scheduledHoursInput.value = '';
-                scheduledMinutesInput.value = '';
-                activityDateInput.value = '';
-            } catch (e) {
-                console.error("Error adding document: ", e);
-                errorMessage.textContent = "Error adding activity. Please try again.";
-                errorMessage.classList.remove('hidden');
-            }
+            activityNameInput.value = '';
+            scheduledHoursInput.value = '';
+            scheduledMinutesInput.value = '';
+            activityDateInput.value = '';
         });
 
-        activityList.addEventListener('click', async (e) => {
+        activityList.addEventListener('click', (e) => {
             const button = e.target.closest('button');
             if (!button) return;
             const id = button.dataset.id;
-
+            
             if (button.classList.contains('delete-btn')) {
-                try {
-                    if (!userId) { throw new Error("User not authenticated."); }
-                    await deleteDoc(doc(db, collectionPath, id));
-                } catch (e) {
-                    console.error("Error removing document: ", e);
-                    errorMessage.textContent = "Error deleting activity. Please try again.";
-                    errorMessage.classList.remove('hidden');
-                }
+                activities = activities.filter(a => a.id !== id);
             } else if (button.classList.contains('update-btn')) {
                 const activity = activities.find(a => a.id === id);
                 if (activity) {
-                    try {
-                        if (!userId) { throw new Error("User not authenticated."); }
-                        await setDoc(doc(db, collectionPath, id), {
-                            isCompleted: !activity.isCompleted
-                        }, { merge: true });
-                    } catch (e) {
-                        console.error("Error updating document: ", e);
-                        errorMessage.textContent = "Error updating activity. Please try again.";
-                        errorMessage.classList.remove('hidden');
-                    }
+                    activity.isCompleted = !activity.isCompleted;
                 }
             }
+            saveActivities();
+            renderActivities();
+            renderChart(currentView);
         });
 
         // Chart Logic
@@ -563,6 +480,11 @@
             monthlyViewBtn.classList.replace('text-white', 'text-gray-800');
             renderChart(currentView);
         });
+
+        // Initialize on page load
+        loadActivities();
+        renderActivities();
+        renderChart(currentView);
     </script>
 </body>
 </html>
