@@ -161,6 +161,7 @@
             </div>
             <div id="validation-message" class="text-red-500 text-sm mt-2 hidden"></div>
             <ul id="activity-list" class="space-y-3"></ul>
+            <div id="error-message" class="text-red-500 text-center font-bold text-lg mt-4 hidden"></div>
         </section>
 
         <!-- Charts Section -->
@@ -183,13 +184,13 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, addDoc, setDoc, deleteDoc, onSnapshot, collection, query, orderBy, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, addDoc, setDoc, deleteDoc, onSnapshot, collection, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Global variables for Firebase
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
+        
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
         const auth = getAuth(app);
@@ -209,6 +210,7 @@
         const activityDateInput = document.getElementById('activity-date');
         const addActivityBtn = document.getElementById('add-activity-btn');
         const validationMessage = document.getElementById('validation-message');
+        const errorMessage = document.getElementById('error-message');
         const progressChartCanvas = document.getElementById('progress-chart');
         const monthlyViewBtn = document.getElementById('monthly-view-btn');
         const yearlyViewBtn = document.getElementById('yearly-view-btn');
@@ -258,13 +260,26 @@
         });
 
         // Firebase Auth and Firestore setup
-        onAuthStateChanged(auth, async (user) => {
+        const initApp = async () => {
+            try {
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Firebase Auth Error:", error);
+                errorMessage.textContent = "Authentication failed. Please try again later or check your network connection.";
+                errorMessage.classList.remove('hidden');
+                loadingOverlay.style.opacity = '0';
+                setTimeout(() => loadingOverlay.style.display = 'none', 300);
+            }
+        };
+
+        onAuthStateChanged(auth, (user) => {
             if (user) {
                 userId = user.uid;
                 userIdSpan.textContent = userId;
-                console.log("User authenticated:", userId);
-                loadingOverlay.style.opacity = '0';
-                setTimeout(() => loadingOverlay.style.display = 'none', 300);
                 
                 // Set up the real-time listener
                 const q = query(collection(db, collectionPath));
@@ -272,24 +287,17 @@
                     activities = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     renderActivities();
                     renderChart(currentView);
-                }, (error) => {
-                    console.error("Error fetching activities:", error);
-                    activityList.innerHTML = `<p class="text-red-500 text-center">Failed to load data. Please check console for details.</p>`;
-                });
-            } else {
-                // If not authenticated, sign in
-                try {
-                    if (initialAuthToken) {
-                        await signInWithCustomToken(auth, initialAuthToken);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
-                } catch (error) {
-                    console.error("Firebase Auth Error:", error);
                     loadingOverlay.style.opacity = '0';
                     setTimeout(() => loadingOverlay.style.display = 'none', 300);
-                    mainApp.innerHTML = `<p class="text-red-500 text-center font-bold text-xl">Authentication failed. Please check the console for details.</p>`;
-                }
+                }, (error) => {
+                    console.error("Error fetching activities:", error);
+                    errorMessage.textContent = "Failed to load data. Please check your network connection.";
+                    errorMessage.classList.remove('hidden');
+                    loadingOverlay.style.opacity = '0';
+                    setTimeout(() => loadingOverlay.style.display = 'none', 300);
+                });
+            } else {
+                initApp();
             }
         });
 
@@ -360,6 +368,7 @@
             const totalMinutes = (hours * 60) + minutes;
 
             try {
+                if (!userId) { throw new Error("User not authenticated."); }
                 await addDoc(collection(db, collectionPath), {
                     name: name,
                     totalMinutes: totalMinutes,
@@ -374,8 +383,8 @@
                 activityDateInput.value = '';
             } catch (e) {
                 console.error("Error adding document: ", e);
-                validationMessage.textContent = "Error adding activity. Please try again.";
-                validationMessage.classList.remove('hidden');
+                errorMessage.textContent = "Error adding activity. Please try again.";
+                errorMessage.classList.remove('hidden');
             }
         });
 
@@ -386,19 +395,25 @@
 
             if (button.classList.contains('delete-btn')) {
                 try {
+                    if (!userId) { throw new Error("User not authenticated."); }
                     await deleteDoc(doc(db, collectionPath, id));
                 } catch (e) {
                     console.error("Error removing document: ", e);
+                    errorMessage.textContent = "Error deleting activity. Please try again.";
+                    errorMessage.classList.remove('hidden');
                 }
             } else if (button.classList.contains('update-btn')) {
                 const activity = activities.find(a => a.id === id);
                 if (activity) {
                     try {
+                        if (!userId) { throw new Error("User not authenticated."); }
                         await setDoc(doc(db, collectionPath, id), {
                             isCompleted: !activity.isCompleted
                         }, { merge: true });
                     } catch (e) {
                         console.error("Error updating document: ", e);
+                        errorMessage.textContent = "Error updating activity. Please try again.";
+                        errorMessage.classList.remove('hidden');
                     }
                 }
             }
