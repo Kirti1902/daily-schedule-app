@@ -149,7 +149,7 @@
                 </button>
             </div>
             <div id="validation-message" class="text-red-500 text-sm mt-2 hidden"></div>
-            <ul id="activity-list" class="space-y-3"></ul>
+            <div id="activity-list" class="space-y-4"></div>
         </section>
 
         <!-- Charts Section -->
@@ -238,7 +238,10 @@
             const storedActivities = localStorage.getItem('activities');
             if (storedActivities) {
                 activities = JSON.parse(storedActivities);
+            } else {
+                activities = [];
             }
+            activities.sort((a, b) => new Date(a.date) - new Date(b.date));
         }
         
         function generateId() {
@@ -269,29 +272,101 @@
                 return;
             }
 
-            activities.forEach((activity) => {
-                const li = document.createElement('li');
-                li.classList.add('flex', 'flex-col', 'sm:flex-row', 'items-start', 'sm:items-center', 'justify-between', 'bg-white', 'p-4', 'rounded-xl', 'shadow-sm', 'border', 'border-gray-200', 'dark:bg-gray-700', 'dark:border-gray-600');
+            // Group activities by year and then by month
+            const activitiesByYearMonth = activities.reduce((acc, activity) => {
+                const date = new Date(activity.date);
+                const year = date.getFullYear().toString();
+                const month = date.toLocaleString('default', { month: 'long' });
                 
-                const taskClass = activity.isCompleted ? 'line-through text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-gray-100';
-                const icon = activity.isCompleted ? '<i class="fas fa-check-circle text-green-500 mr-2"></i>' : '';
-                
-                const buttonText = activity.isCompleted ? 'Mark Incomplete' : 'Mark Complete';
-                const buttonClass = activity.isCompleted ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-green-500 hover:bg-green-600';
+                if (!acc[year]) acc[year] = {};
+                if (!acc[year][month]) acc[year][month] = [];
+                acc[year][month].push(activity);
+                return acc;
+            }, {});
 
-                li.innerHTML = `
-                    <div class="flex-1 flex flex-col sm:flex-row items-start sm:items-center space-y-1 sm:space-y-0 sm:space-x-4">
-                        <span class="text-lg font-medium ${taskClass}">${icon}${activity.name}</span>
-                        <span class="text-sm text-gray-500 dark:text-gray-400"><i class="fas fa-calendar-alt mr-1"></i> ${activity.date}</span>
-                        <span class="text-sm text-gray-500 dark:text-gray-400"><i class="fas fa-clock mr-1"></i> ${formatDuration(activity.totalMinutes)}</span>
-                    </div>
-                    <div class="flex space-x-2 mt-2 sm:mt-0">
-                        <button data-id="${activity.id}" class="update-btn ${buttonClass} text-white font-bold py-2 px-4 rounded-lg transition-colors text-sm">${buttonText}</button>
-                        <button data-id="${activity.id}" class="delete-btn bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition-colors text-sm">Delete</button>
-                    </div>
-                `;
-                
-                activityList.appendChild(li);
+            // Sort years and months in descending order
+            const sortedYears = Object.keys(activitiesByYearMonth).sort().reverse();
+
+            sortedYears.forEach(year => {
+                const sortedMonths = Object.keys(activitiesByYearMonth[year]).reverse();
+
+                sortedMonths.forEach(month => {
+                    const monthSection = document.createElement('details');
+                    monthSection.classList.add('bg-white', 'dark:bg-gray-700', 'rounded-xl', 'shadow-md', 'border', 'border-gray-200', 'dark:border-gray-600', 'group', 'mb-4');
+                    
+                    const monthSummary = document.createElement('summary');
+                    monthSummary.classList.add('flex', 'items-center', 'justify-between', 'p-4', 'cursor-pointer', 'font-bold', 'text-gray-900', 'dark:text-gray-100', 'transition-colors');
+                    monthSummary.innerHTML = `
+                        <div class="flex items-center space-x-3">
+                            <i class="fas fa-calendar-alt text-blue-500"></i>
+                            <span>${month}, ${year}</span>
+                        </div>
+                        <i class="fas fa-chevron-down transform transition-transform group-open:rotate-180"></i>
+                    `;
+                    monthSection.appendChild(monthSummary);
+
+                    const tasksByDate = activitiesByYearMonth[year][month].reduce((acc, activity) => {
+                        const date = activity.date;
+                        if (!acc[date]) {
+                            acc[date] = [];
+                        }
+                        acc[date].push(activity);
+                        return acc;
+                    }, {});
+
+                    const sortedDates = Object.keys(tasksByDate).sort((a, b) => new Date(b) - new Date(a));
+
+                    const dateListContainer = document.createElement('div');
+                    dateListContainer.classList.add('p-4', 'space-y-4');
+
+                    sortedDates.forEach(date => {
+                        const tasksForDate = tasksByDate[date];
+                        const completedTasks = tasksForDate.filter(t => t.isCompleted).length;
+                        const totalTasks = tasksForDate.length;
+                        
+                        const dateSection = document.createElement('details');
+                        dateSection.classList.add('bg-gray-50', 'dark:bg-gray-800', 'rounded-xl', 'shadow-inner', 'border', 'border-gray-100', 'dark:border-gray-700', 'group');
+                        
+                        const dateSummary = document.createElement('summary');
+                        dateSummary.classList.add('flex', 'items-center', 'justify-between', 'p-4', 'cursor-pointer', 'font-semibold', 'text-gray-900', 'dark:text-gray-100', 'transition-colors');
+                        dateSummary.innerHTML = `
+                            <div class="flex items-center space-x-3">
+                                <span>${new Date(date).toDateString()}</span>
+                                <span class="text-sm font-normal text-gray-500 dark:text-gray-400">(${completedTasks}/${totalTasks} tasks completed)</span>
+                            </div>
+                            <i class="fas fa-chevron-down transform transition-transform group-open:rotate-180"></i>
+                        `;
+                        dateSection.appendChild(dateSummary);
+
+                        const taskList = document.createElement('ul');
+                        taskList.classList.add('p-4', 'border-t', 'border-gray-200', 'dark:border-gray-600', 'space-y-3');
+
+                        tasksForDate.forEach((activity) => {
+                            const li = document.createElement('li');
+                            li.classList.add('flex', 'flex-col', 'sm:flex-row', 'items-start', 'sm:items-center', 'justify-between', 'bg-white', 'dark:bg-gray-700', 'p-3', 'rounded-lg', 'shadow-sm', 'border', 'border-gray-100', 'dark:border-gray-700');
+                            
+                            const taskClass = activity.isCompleted ? 'line-through text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-gray-100';
+                            const buttonText = activity.isCompleted ? 'Mark Incomplete' : 'Mark Complete';
+                            const buttonClass = activity.isCompleted ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-green-500 hover:bg-green-600';
+
+                            li.innerHTML = `
+                                <div class="flex-1 flex flex-col sm:flex-row items-start sm:items-center space-y-1 sm:space-y-0 sm:space-x-4">
+                                    <span class="text-lg font-medium ${taskClass}">${activity.name}</span>
+                                    <span class="text-sm text-gray-500 dark:text-gray-400"><i class="fas fa-clock mr-1"></i> ${formatDuration(activity.totalMinutes)}</span>
+                                </div>
+                                <div class="flex space-x-2 mt-2 sm:mt-0">
+                                    <button data-id="${activity.id}" class="update-btn ${buttonClass} text-white font-bold py-2 px-4 rounded-lg transition-colors text-sm">${buttonText}</button>
+                                    <button data-id="${activity.id}" class="delete-btn bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition-colors text-sm">Delete</button>
+                                </div>
+                            `;
+                            taskList.appendChild(li);
+                        });
+                        dateSection.appendChild(taskList);
+                        dateListContainer.appendChild(dateSection);
+                    });
+                    monthSection.appendChild(dateListContainer);
+                    activityList.appendChild(monthSection);
+                });
             });
         }
 
@@ -347,6 +422,12 @@
         });
 
         // Chart Logic
+        function formatMinutesToHours(minutes) {
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            return `${hours}h ${mins}m`;
+        }
+
         function getChartData(view) {
             const now = new Date();
             const currentMonth = now.getMonth();
@@ -399,25 +480,33 @@
             }
 
             progressChart = new Chart(progressChartCanvas, {
-                type: 'bar',
+                type: 'line',
                 data: {
                     labels: labels,
                     datasets: [
                         {
-                            label: 'Total Scheduled Time (min)',
+                            label: 'Total Scheduled Time',
                             data: totalTimeData,
-                            backgroundColor: 'rgba(59, 130, 246, 0.7)',
                             borderColor: 'rgba(59, 130, 246, 1)',
-                            borderWidth: 1,
-                            borderRadius: 10,
+                            backgroundColor: 'transparent',
+                            fill: false,
+                            tension: 0.4,
+                            pointBackgroundColor: 'rgba(59, 130, 246, 1)',
+                            pointBorderColor: '#fff',
+                            pointRadius: 5,
+                            pointHoverRadius: 7,
                         },
                         {
-                            label: 'Completed Time (min)',
+                            label: 'Completed Time',
                             data: completedTimeData,
-                            backgroundColor: 'rgba(16, 185, 129, 0.7)',
                             borderColor: 'rgba(16, 185, 129, 1)',
-                            borderWidth: 1,
-                            borderRadius: 10,
+                            backgroundColor: 'transparent',
+                            fill: false,
+                            tension: 0.4,
+                            pointBackgroundColor: 'rgba(16, 185, 129, 1)',
+                            pointBorderColor: '#fff',
+                            pointRadius: 5,
+                            pointHoverRadius: 7,
                         }
                     ]
                 },
@@ -434,11 +523,22 @@
                         tooltip: {
                             mode: 'index',
                             intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += formatMinutesToHours(context.parsed.y);
+                                    }
+                                    return label;
+                                }
+                            }
                         }
                     },
                     scales: {
                         x: {
-                            stacked: true,
                             grid: {
                                 display: false
                             },
@@ -447,14 +547,19 @@
                             }
                         },
                         y: {
-                            stacked: false,
                             beginAtZero: true,
                             title: {
                                 display: true,
-                                text: 'Total Minutes',
+                                text: 'Time',
                                 color: isDarkMode ? '#d1d5db' : '#1e293b'
                             },
+                            grid: {
+                                color: isDarkMode ? 'rgba(209, 213, 219, 0.2)' : 'rgba(209, 213, 219, 0.5)'
+                            },
                             ticks: {
+                                callback: function(value) {
+                                    return formatMinutesToHours(value);
+                                },
                                 color: isDarkMode ? '#d1d5db' : '#1e293b'
                             }
                         }
