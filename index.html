@@ -199,7 +199,7 @@
         let activities = [];
         let progressChart;
         let currentView = 'monthly';
-        const collectionPath = `artifacts/${appId}/public/data/activities`;
+        let collectionPath = null; // Path will be set after auth
 
         // UI elements
         const loadingOverlay = document.getElementById('loading-overlay');
@@ -259,8 +259,14 @@
             renderChart(currentView);
         });
 
-        // Firebase Auth and Firestore setup
-        const initApp = async () => {
+        // Function to hide the loading overlay
+        const hideLoadingOverlay = () => {
+            loadingOverlay.style.opacity = '0';
+            setTimeout(() => loadingOverlay.style.display = 'none', 300);
+        };
+
+        // Initialize Firebase Auth
+        const initAuth = async () => {
             try {
                 if (initialAuthToken) {
                     await signInWithCustomToken(auth, initialAuthToken);
@@ -271,33 +277,37 @@
                 console.error("Firebase Auth Error:", error);
                 errorMessage.textContent = "Authentication failed. Please try again later or check your network connection.";
                 errorMessage.classList.remove('hidden');
-                loadingOverlay.style.opacity = '0';
-                setTimeout(() => loadingOverlay.style.display = 'none', 300);
+                hideLoadingOverlay();
             }
         };
 
+        // Main authentication state listener
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 userId = user.uid;
                 userIdSpan.textContent = userId;
                 
+                // Set the user-specific collection path
+                collectionPath = `artifacts/${appId}/users/${userId}/activities`;
+
                 // Set up the real-time listener
                 const q = query(collection(db, collectionPath));
                 onSnapshot(q, (snapshot) => {
+                    // This block runs when data is successfully loaded or changes
                     activities = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                     renderActivities();
                     renderChart(currentView);
-                    loadingOverlay.style.opacity = '0';
-                    setTimeout(() => loadingOverlay.style.display = 'none', 300);
+                    hideLoadingOverlay();
                 }, (error) => {
+                    // This block runs if the listener fails
                     console.error("Error fetching activities:", error);
                     errorMessage.textContent = "Failed to load data. Please check your network connection.";
                     errorMessage.classList.remove('hidden');
-                    loadingOverlay.style.opacity = '0';
-                    setTimeout(() => loadingOverlay.style.display = 'none', 300);
+                    hideLoadingOverlay();
                 });
             } else {
-                initApp();
+                // If no user is signed in, trigger anonymous authentication
+                initAuth();
             }
         });
 
